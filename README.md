@@ -2,6 +2,8 @@
 
 A command-line customer-support assistant for Empório da Música. It answers in Brazilian Portuguese and uses local product/order data and the store-policy PDF to ground its responses.
 
+This repository was developed as a technical case for the AI Engineer position at Artefact.
+
 ## Requirements
 
 - Python 3.9 or newer
