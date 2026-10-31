@@ -1,0 +1,45 @@
+import pandas as pd
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+from src.config import DATA_DIR
+
+class DatabaseManager:
+    
+    def __init__(self, data_dir: Path = DATA_DIR):
+        self.data_dir = data_dir
+        self.products = pd.read_csv(self.data_dir / "products.csv")
+        self.promotions = pd.read_csv(self.data_dir / "promotions.csv")
+        self.categories = pd.read_csv(self.data_dir / "categories.csv")
+        self.customers = pd.read_csv(self.data_dir / "customers.csv")
+        self.orders = pd.read_csv(self.data_dir / "orders.csv")
+        self.order_items = pd.read_csv(self.data_dir / "order_items.csv")
+
+    def search_products(
+        self, 
+        query: Optional[str] = None, 
+        max_price: Optional[float] = None, 
+        category_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        df = self.products.copy()
+        
+        if max_price is not None:
+            df = df[df["price"] <= max_price]
+            
+        if query:
+            df = df[
+                df["name"].str.contains(query, case=False, na=False) | 
+                df["description"].str.contains(query, case=False, na=False)
+            ]
+            
+        return df.to_dict(orient="records")
+
+    def get_order_status(self, order_id: str) -> Dict[str, Any]:
+        order = self.orders[self.orders["order_id"].astype(str) == str(order_id)]
+        if order.empty:
+            return {"error": "Order not found."}
+        
+        items = self.order_items[self.order_items["order_id"].astype(str) == str(order_id)]
+        return {
+            "order": order.to_dict(orient="records")[0],
+            "items": items.to_dict(orient="records")
+        }
