@@ -23,13 +23,20 @@ class DatabaseManager:
         df = self.products.copy()
         
         if max_price is not None:
-            df = df[df["price"] <= max_price]
+            df = df[df["price_brl"] <= max_price]
             
         if query:
             df = df[
                 df["name"].str.contains(query, case=False, na=False) | 
                 df["description"].str.contains(query, case=False, na=False)
             ]
+
+        if category_name:
+            category_ids = self.categories.loc[
+                self.categories["name"].str.contains(category_name, case=False, na=False),
+                "category_id",
+            ]
+            df = df[df["category_id"].isin(category_ids)]
             
         return df.to_dict(orient="records")
 
