@@ -20,6 +20,24 @@ def tool_search_products(query: Optional[str] = None, max_price: Optional[float]
     ]
     return {"results": results, "count": len(matches), "showing": len(results)}
 
+
+def tool_search_promotions(category_name: Optional[str] = None) -> Dict[str, Any]:
+    matches = db_manager.search_active_promotions(category_name=category_name)
+    results = [
+        {
+            "name": promotion["name"],
+            "category": promotion["category"],
+            "price_brl": promotion["price_brl"],
+            "discount_percent": promotion["discount_percent"],
+            "promotion_price_brl": promotion["promotion_price_brl"],
+            "stock_quantity": promotion["stock_quantity"],
+            "promotion_name": promotion["promotion_name"],
+        }
+        for promotion in matches[:3]
+    ]
+    return {"results": results, "count": len(matches), "showing": len(results)}
+
+
 def tool_get_order_status(order_id: str) -> Dict[str, Any]:
     return db_manager.get_order_status(order_id=order_id)
 

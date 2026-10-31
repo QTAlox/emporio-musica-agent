@@ -3,14 +3,23 @@ from typing import Any, Dict, List, Optional
 from groq import Groq
 
 from src.config import GROQ_API_KEY, MODEL_NAME
-from src.tools import tool_search_products, tool_get_order_status, tool_check_store_policy
+from src.tools import (
+    tool_search_products,
+    tool_search_promotions,
+    tool_get_order_status,
+    tool_check_store_policy,
+)
 
 SYSTEM_INSTRUCTION = """
 You are Empório da Música's customer-support assistant in Campo Grande/MS.
-Reply briefly in friendly, professional Brazilian Portuguese.
+Always reply in natural, friendly, professional Brazilian Portuguese.
 The store sells musical instruments only, not accessories (strings, picks, cables, cases, pedals, or amps).
 Use tools for exact product, order, and policy facts; never invent them.
 Politely decline unrelated requests and redirect to musical instruments.
+Avoid Markdown tables. For product searches, show up to three relevant options as concise bullet points with the name, price, and stock. Do not show internal product IDs or unnecessary descriptions.
+For questions about current promotions or discounts, always use the promotion search tool. Report the discounted price only when the tool provides it; if no matching active promotions are found, say so plainly.
+For a single-product price question, answer directly in one or two sentences instead of listing a table.
+Keep the answer complete and concise, and finish with a helpful follow-up question when appropriate.
 Do not use Markdown bold markers (**); write responses in plain text.
 """
 
@@ -24,12 +33,34 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "tool_search_products",
-            "description": "Search instruments by name or maximum price.",
+            "description": "Search the instrument catalog by name or maximum price. For promotions and discounts, use tool_search_promotions instead.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Product name or description to search for."},
-                    "max_price": {"type": "number", "description": "Maximum product price."},
+                    "query": {
+                        "type": ["string", "null"],
+                        "description": "Optional product name or description. Use null when omitted.",
+                    },
+                    "max_price": {
+                        "type": ["number", "null"],
+                        "description": "Optional maximum price. Use null when no price limit is specified.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tool_search_promotions",
+            "description": "Search active discounts and promotions. Use this for any question about products on sale or current offers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category_name": {
+                        "type": ["string", "null"],
+                        "description": "Optional instrument category, such as Guitarras or Violões. Use null if no category is specified.",
+                    },
                 },
             },
         },
@@ -76,6 +107,7 @@ class EmporioAgent:
         self.model = MODEL_NAME
         self.tools_map = {
             "tool_search_products": tool_search_products,
+            "tool_search_promotions": tool_search_promotions,
             "tool_get_order_status": tool_get_order_status,
             "tool_check_store_policy": tool_check_store_policy
         }
@@ -102,7 +134,7 @@ class EmporioAgent:
                 tool_choice="auto",
                 parallel_tool_calls=False,
                 temperature=0.2,
-                max_completion_tokens=256,
+                max_completion_tokens=512,
             )
             assistant_message = response.choices[0].message
             if not assistant_message.tool_calls:
@@ -133,8 +165,11 @@ class EmporioAgent:
             {
                 "role": "system",
                 "content": (
-                    "Responda de forma breve em português brasileiro, usando somente a conversa "
-                    "e os resultados das ferramentas fornecidos. Não tente chamar ferramentas."
+                    "Responda em português brasileiro natural, de forma amigável e concisa, usando "
+                    "somente a conversa e os resultados das ferramentas fornecidos. Não use tabelas "
+                    "Markdown, não mostre IDs internos de produtos e não tente chamar ferramentas. "
+                    "Para buscas de produtos, use até três tópicos com nome, preço e estoque. "
+                    "Entregue uma resposta completa."
                 ),
             }
         ]
@@ -160,7 +195,7 @@ class EmporioAgent:
             model=self.model,
             messages=final_messages,
             temperature=0.2,
-            max_completion_tokens=256,
+            max_completion_tokens=512,
         )
         final_text = final_response.choices[0].message.content
         if not final_text:

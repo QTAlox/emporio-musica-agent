@@ -83,9 +83,9 @@ The implementation is a small Python CLI application rather than a web framework
 The request flow is:
 
 1. `main.py` reads user input and keeps the conversation history in memory.
-2. `src/agent.py` sends the system prompt and conversation to Groq, with three function tools available. It executes requested tools and returns the model's answer.
-3. `src/tools.py` exposes product search, order lookup, and policy search to the model.
-4. `src/database.py` uses pandas to load the local CSV files under `data/` and look up products and orders.
+2. `src/agent.py` sends the system prompt and conversation to Groq, with four function tools available. It executes requested tools and returns the model's answer.
+3. `src/tools.py` exposes product search, active-promotion search, order lookup, and policy search to the model.
+4. `src/database.py` uses pandas to load the local CSV files under `data/` and look up products, active promotions, and orders.
 5. `src/rag.py` extracts text from `data/políticas_da_loja.pdf`, normalizes whitespace, splits it at numbered subsections, and breaks unusually long sections into bounded chunks. It ranks chunks by matching query terms and returns the matching policy text to the model as tool output.
 
 This policy retrieval is a lightweight lexical retrieval approach, not embedding-based or vector-database RAG. It avoids extra infrastructure and dependencies for the small, local policy document. The other tools query the CSVs directly so exact product and order facts come from the supplied data instead of model memory.

@@ -50,3 +50,54 @@ class DatabaseManager:
             "order": order.to_dict(orient="records")[0],
             "items": items.to_dict(orient="records")
         }
+
+    def search_active_promotions(
+        self, category_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        active_promotions = self.promotions[
+            self.promotions["is_active"].astype(bool)
+        ]
+        products = self.products[self.products["status"] == "active"]
+        matches = active_promotions.merge(
+            products,
+            on="product_id",
+            how="inner",
+            suffixes=("_promotion", "_product"),
+        )
+        matches = matches.merge(
+            self.categories[["category_id", "name"]],
+            on="category_id",
+            how="left",
+            suffixes=("", "_category"),
+        )
+
+        if category_name:
+            category_ids = self.categories.loc[
+                self.categories["name"].str.contains(
+                    category_name, case=False, na=False
+                ),
+                "category_id",
+            ]
+            matches = matches[matches["category_id"].isin(category_ids)]
+
+        matches["promotion_price_brl"] = (
+            matches["price_brl"]
+            * (1 - matches["discount_percent"] / 100)
+        ).round(2)
+        return matches[
+            [
+                "product_id",
+                "name",
+                "name_category",
+                "price_brl",
+                "discount_percent",
+                "promotion_price_brl",
+                "stock_quantity",
+                "description_promotion",
+            ]
+        ].rename(
+            columns={
+                "name_category": "category",
+                "description_promotion": "promotion_name",
+            }
+        ).to_dict(orient="records")
